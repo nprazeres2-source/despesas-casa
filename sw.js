@@ -1,6 +1,6 @@
 const CACHE_NAME = 'despesas-casa-v1';
 const CORE_ASSETS = [
-  './despesas-casa.html',
+  './index.html',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png'

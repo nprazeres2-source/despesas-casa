@@ -2,7 +2,7 @@
   "name": "Despesas de Casa",
   "short_name": "Despesas",
   "description": "Registo de água, luz e gás — leituras, garrafas e valores pagos.",
-  "start_url": "./despesas-casa.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#1E1C18",
