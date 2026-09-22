@@ -1,0 +1,17 @@
+{
+  "name": "Despesas de Casa",
+  "short_name": "Despesas",
+  "description": "Registo de água, luz e gás — leituras, garrafas e valores pagos.",
+  "start_url": "./despesas-casa.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1E1C18",
+  "theme_color": "#1E1C18",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
