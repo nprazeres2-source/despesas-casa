@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Despesas de Casa — Água · Luz · Gás</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1E1C18;
+    --panel:#28251F;
+    --panel-2:#332F27;
+    --ink:#EDE6D6;
+    --muted:#9C9585;
+    --line:#3C3830;
+    --agua:#3E7CB1;
+    --agua-dim:#2C4E68;
+    --luz:#C99A2E;
+    --luz-dim:#6E5620;
+    --gas:#B54B32;
+    --gas-dim:#5F2C1F;
+    --red:#B23A2E;
+    --good:#5B8A5B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Manrope',sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:24px 18px 0;}
+
+  header.top{margin-bottom:22px;}
+  header.top .eyebrow{
+    font-family:'Space Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  header.top h1{
+    font-size:26px;
+    margin:4px 0 2px;
+    font-weight:800;
+    letter-spacing:-0.01em;
+  }
+  header.top p{margin:0;color:var(--muted);font-size:13.5px;}
+  .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .gear-btn{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--muted);
+    width:38px;height:38px;
+    border-radius:10px;
+    font-size:17px;
+    cursor:pointer;
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .gear-btn:hover{color:var(--ink);}
+  .sync-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:8px;font-family:'Space Mono',monospace;}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+  .sync-dot.ok{background:var(--good);}
+  .sync-dot.err{background:var(--red);}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(10,9,7,.72);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:50;
+  }
+  .modal-overlay.hidden{display:none;}
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px 18px 0 0;
+    padding:20px 18px 26px;
+    width:100%;max-width:720px;
+    max-height:88vh;overflow-y:auto;
+  }
+  @media (min-width:760px){
+    .modal-overlay{align-items:center;}
+    .modal{border-radius:18px;}
+  }
+  .modal h3{margin:0 0 6px;font-size:16px;}
+  .modal p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.5;}
+  .modal textarea{
+    width:100%;
+    background:#151310;
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:11px;
+    color:var(--ink);
+    font-family:'Space Mono',monospace;
+    font-size:12.5px;
+    resize:vertical;
+  }
+  .config-status{font-size:12.5px;margin-top:10px;color:var(--muted);font-family:'Space Mono',monospace;}
+  .config-status.ok{color:var(--good);}
+  .config-status.err{color:var(--red);}
+
+  .tabs{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin:22px 0 18px;
+    background:#151310;
+    padding:8px;
+    border-radius:14px;
+    border:1px solid var(--line);
+  }
+  .tab{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:12px 4px 10px;
+    border-radius:10px;
+    cursor:pointer;
+    background:transparent;
+    border:1px solid transparent;
+    color:var(--muted);
+    font-family:'Manrope',sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    letter-spacing:.02em;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .tab svg{width:20px;height:20px;opacity:.75;}
+  .tab.active{color:var(--ink);border-color:var(--line);}
+  .tab.active svg{opacity:1;}
+  .tab[data-cat="agua"].active{background:var(--agua-dim);}
+  .tab[data-cat="luz"].active{background:var(--luz-dim);}
+  .tab[data-cat="gas"].active{background:var(--gas-dim);}
+
+  .panel{display:none;animation:fade .18s ease;}
+  .panel.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
+
+  .meter-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .meter-card .label-row{
+    display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;
+  }
+  .meter-card .label-row .name{font-weight:800;font-size:15px;}
+  .meter-card .label-row .updated{font-size:11.5px;color:var(--muted);font-family:'Space Mono',monospace;}
+
+  .odometer{
+    display:flex;
+    gap:3px;
+    background:#0E0D0B;
+    padding:8px 10px;
+    border-radius:8px;
+    width:fit-content;
+    max-width:100%;
+    overflow-x:auto;
+  }
+  .odometer.small{padding:5px 7px;}
+  .odometer .digit{
+    font-family:'Space Mono',monospace;
+    font-weight:700;
+    font-size:22px;
+    color:#F2EFE6;
+    background:#1A1815;
+    width:22px;
+    text-align:center;
+    border-radius:3px;
+    padding:4px 0;
+    border:1px solid #2C2822;
+  }
+  .odometer.small .digit{font-size:16px;width:17px;padding:3px 0;}
+  .odometer .digit.decimal{
+    color:#FBEAE6;
+    background:var(--red);
+    border-color:#7A2A20;
+  }
+  .odometer .unit{
+    align-self:center;
+    margin-left:8px;
+    color:var(--muted);
+    font-family:'Manrope',sans-serif;
+    font-size:12px;
+    font-weight:600;
+  }
+
+  .readings-grid{display:flex;flex-direction:column;gap:10px;}
+  .reading-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .reading-tag{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    font-weight:700;
+    width:52px;
+    flex-shrink:0;
+  }
+
+  .bottles-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .bottle-badge{
+    font-family:'Space Mono',monospace;
+    font-weight:700;
+    font-size:22px;
+    color:var(--gas);
+    background:#0E0D0B;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 16px;
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+  }
+  .bottle-badge .u{font-size:12px;color:var(--muted);font-weight:600;}
+
+  .stat-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .stat{
+    background:var(--panel-2);
+    border-radius:10px;
+    padding:8px 12px;
+    flex:1;
+    min-width:110px;
+  }
+  .stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+  .stat .v{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;margin-top:2px;}
+
+  form.entry{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  form.entry h3{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:12px;color:var(--muted);font-weight:600;}
+  .field input,.field select{
+    background:#151310;
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:10px 11px;
+    color:var(--ink);
+    font-family:'Manrope',sans-serif;
+    font-size:14.5px;
+  }
+  .field select{appearance:none;-webkit-appearance:none;}
+  .field input:focus,.field select:focus{outline:2px solid var(--muted);outline-offset:1px;}
+  .field input::-webkit-calendar-picker-indicator{filter:invert(.8);}
+
+  .btn-row{display:flex;gap:8px;margin-top:14px;}
+  button.primary{
+    flex:1;
+    border:none;
+    border-radius:10px;
+    padding:11px;
+    font-weight:800;
+    font-size:14px;
+    cursor:pointer;
+    color:#161310;
+  }
+  button.primary.agua{background:var(--agua);}
+  button.primary.luz{background:var(--luz);}
+  button.primary.gas{background:var(--gas);}
+  button.secondary{
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--muted);
+    border-radius:10px;
+    padding:11px 14px;
+    cursor:pointer;
+    font-weight:700;
+    font-size:13.5px;
+  }
+
+  .chart-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 14px 10px;
+    margin-bottom:14px;
+  }
+  .chart-card h3{margin:0 0 12px 4px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+  .chart-wrap{height:190px;position:relative;}
+  .chart-legend{display:flex;gap:14px;margin:10px 4px 2px;flex-wrap:wrap;}
+  .chart-legend span{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);font-weight:600;}
+  .chart-legend i{width:9px;height:9px;border-radius:2px;display:inline-block;}
+
+  .history h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:18px 0 8px;}
+  .entry-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:11px 4px;
+    border-bottom:1px solid var(--line);
+    gap:8px;
+  }
+  .entry-row:last-child{border-bottom:none;}
+  .entry-row .main{display:flex;flex-direction:column;gap:2px;}
+  .entry-row .date{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--muted);}
+  .entry-row .val{font-weight:700;font-size:14.5px;}
+  .entry-row .sub{font-size:11.5px;color:var(--muted);}
+  .entry-row .amount{font-family:'Space Mono',monospace;font-weight:700;font-size:14.5px;white-space:nowrap;}
+  .entry-row .actions{display:flex;gap:6px;}
+  .entry-row .actions button{
+    background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:16px;padding:4px 6px;line-height:1;
+  }
+  .entry-row .actions button:hover{color:var(--ink);}
+  .empty{color:var(--muted);font-size:13.5px;padding:16px 4px;text-align:center;}
+
+  footer{
+    max-width:720px;margin:26px auto 0;padding:0 18px;
+    color:var(--muted);font-size:11.5px;text-align:center;
+    font-family:'Space Mono',monospace;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="top-row">
+      <div>
+        <div class="eyebrow">Registo doméstico</div>
+        <h1>Despesas de Casa</h1>
+        <p>Leituras de contadores, garrafas de gás e valores pagos.</p>
+      </div>
+      <button class="gear-btn" id="btn-settings" title="Sincronização">⚙</button>
+    </div>
+    <div class="sync-status"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">A verificar…</span></div>
+  </header>
+
+  <div class="modal-overlay hidden" id="settings-modal">
+    <div class="modal">
+      <h3>Sincronizar entre equipamentos</h3>
+      <p>Para usar esta app em mais do que um telemóvel/tablet, cria um projeto Firebase (gratuito) com Firestore e cola aqui a configuração da app Web. Todos os equipamentos com a mesma configuração partilham os mesmos dados, sem necessidade de login.</p>
+      <textarea id="firebase-config-input" rows="7" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'></textarea>
+      <div class="btn-row">
+        <button class="primary agua" id="btn-save-config">Guardar e ligar</button>
+        <button class="secondary" id="btn-clear-config">Usar só neste equipamento</button>
+      </div>
+      <div class="config-status" id="config-status"></div>
+      <button class="secondary" id="btn-close-settings" style="margin-top:12px;width:100%;">Fechar</button>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <div class="tab active" data-cat="agua">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2s7 8.5 7 13a7 7 0 1 1-14 0c0-4.5 7-13 7-13Z"/></svg>
+      Água
+    </div>
+    <div class="tab" data-cat="luz">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
+      Luz
+    </div>
+    <div class="tab" data-cat="gas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c4 0 7-2.7 7-6.5 0-3-2-5-3.3-7.2C14.5 6.3 14 4.5 14 2c-1.8 1.6-3 4-3 6.3 0 1.3.5 2.2.5 3.2C10 10 8.5 8 8.5 8S5 11.5 5 15.5C5 19.3 8 22 12 22Z"/></svg>
+      Gás
+    </div>
+  </nav>
+
+  <section class="panel active" id="panel-agua"></section>
+  <section class="panel" id="panel-luz"></section>
+  <section class="panel" id="panel-gas"></section>
+
+  <footer>Sem sincronização configurada, os dados ficam apenas neste equipamento (localStorage).</footer>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+const STORAGE_KEY = 'despesasCasaData_v2';
+const FIREBASE_CONFIG_KEY = 'despesasCasaFirebaseConfig_v1';
+const today = () => new Date().toISOString().slice(0,10);
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return normalize(JSON.parse(raw));
+  }catch(e){}
+  return { agua: [], luz: [], gas: [] };
+}
+function normalize(d){
+  return { agua: (d && d.agua) || [], luz: (d && d.luz) || [], gas: (d && d.gas) || [] };
+}
+let data = loadData();
+
+let db = null;
+let cloudEnabled = false;
+
+function setSyncStatus(text, cls){
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-text');
+  dot.className = 'sync-dot' + (cls ? ' '+cls : '');
+  label.textContent = text;
+}
+
+function docRef(){ return db.collection('despesasCasa').doc('dados'); }
+
+function initFirebase(config){
+  try{
+    if(!firebase.apps || firebase.apps.length === 0){
+      firebase.initializeApp(config);
+    }
+    db = firebase.firestore();
+    cloudEnabled = true;
+    setSyncStatus('A ligar…', null);
+    docRef().onSnapshot(snap=>{
+      if(snap.exists){
+        data = normalize(snap.data());
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        renderAll();
+        setSyncStatus('Sincronizado', 'ok');
+      } else {
+        docRef().set(data).catch(()=>{});
+        setSyncStatus('Sincronizado', 'ok');
+      }
+    }, err=>{
+      console.error(err);
+      setSyncStatus('Erro de ligação — a usar dados locais', 'err');
+    });
+  } catch(e){
+    console.error(e);
+    cloudEnabled = false;
+    setSyncStatus('Configuração inválida — a usar só este equipamento', 'err');
+  }
+}
+
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  if(cloudEnabled && db){
+    docRef().set(data).catch(err=>{
+      console.error(err);
+      setSyncStatus('Erro ao sincronizar', 'err');
+    });
+  }
+}
+
+function renderAll(){ renderAgua(); renderLuz(); renderGas(); }
+
+(function bootSync(){
+  const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
+  if(raw){
+    try{
+      initFirebase(JSON.parse(raw));
+    }catch(e){
+      setSyncStatus('Configuração inválida', 'err');
+    }
+  } else {
+    setSyncStatus('Só neste equipamento', null);
+  }
+})();
+
+function parseConfigInput(text){
+  text = text.trim();
+  try{ return JSON.parse(text); }catch(e){}
+  try{ return new Function('return (' + text + ')')(); }catch(e){}
+  return null;
+}
+
+document.getElementById('btn-settings').addEventListener('click', ()=>{
+  const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
+  document.getElementById('firebase-config-input').value = raw ? JSON.stringify(JSON.parse(raw), null, 2) : '';
+  document.getElementById('config-status').textContent = '';
+  document.getElementById('config-status').className = 'config-status';
+  document.getElementById('settings-modal').classList.remove('hidden');
+});
+document.getElementById('btn-close-settings').addEventListener('click', ()=>{
+  document.getElementById('settings-modal').classList.add('hidden');
+});
+document.getElementById('btn-save-config').addEventListener('click', ()=>{
+  const text = document.getElementById('firebase-config-input').value;
+  const cfg = parseConfigInput(text);
+  const statusEl = document.getElementById('config-status');
+  if(!cfg || !cfg.projectId){
+    statusEl.textContent = 'Não foi possível ler a configuração. Confirma que colaste o objeto completo.';
+    statusEl.className = 'config-status err';
+    return;
+  }
+  localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
+  statusEl.textContent = 'Configuração guardada. A ligar…';
+  statusEl.className = 'config-status ok';
+  setTimeout(()=> location.reload(), 600);
+});
+document.getElementById('btn-clear-config').addEventListener('click', ()=>{
+  if(confirm('Remover a configuração de sincronização? A app volta a guardar os dados só neste equipamento.')){
+    localStorage.removeItem(FIREBASE_CONFIG_KEY);
+    location.reload();
+  }
+});
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function fmtEuro(v){
+  return (Number(v)||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+}
+function fmtDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
+function odometerHTML(value, decimals, small){
+  const num = Number(value)||0;
+  const fixed = num.toFixed(decimals);
+  const [intPart, decPart] = fixed.split('.');
+  const intDigits = intPart.padStart(6,'0').split('');
+  let html = `<div class="odometer${small?' small':''}">`;
+  intDigits.forEach(d=> html += `<div class="digit">${d}</div>`);
+  if(decPart){
+    decPart.split('').forEach(d=> html += `<div class="digit decimal">${d}</div>`);
+  }
+  html += '</div>';
+  return html;
+}
+
+function yearTotal(cat, year){
+  return data[cat].filter(e=> yearOf(cat,e) === String(year)).reduce((s,e)=>s+Number(e.amount||0),0);
+}
+function allTimeTotal(cat){
+  return data[cat].reduce((s,e)=>s+Number(e.amount||0),0);
+}
+function yearOf(cat, e){
+  if(cat==='luz') return (e.invoiceDate||e.sendDate||'').slice(0,4);
+  return (e.date||'').slice(0,4);
+}
+
+/* ---------- gráficos ---------- */
+let chartAgua=null, chartLuz=null, chartGas=null;
+function shortDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
+}
+function noDataMsg(canvasId, msg){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const wrap = canvas.parentElement;
+  wrap.innerHTML = `<div class="empty" style="padding-top:60px;">${msg}</div>`;
+}
+
+function drawChartAgua(entries){
+  if(entries.length < 2){ noDataMsg('chart-agua','Precisas de pelo menos 2 leituras para ver o consumo.'); return; }
+  const labels = entries.slice(1).map(e=>shortDate(e.date));
+  const values = entries.slice(1).map((e,i)=> +(Number(e.reading)-Number(entries[i].reading)).toFixed(1));
+  if(chartAgua) chartAgua.destroy();
+  chartAgua = new Chart(document.getElementById('chart-agua'), {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'m³', data:values, backgroundColor:'#3E7CB1', borderRadius:4, maxBarThickness:34 }] },
+    options: chartOptions('m³')
+  });
+}
+
+function drawChartLuz(entries){
+  if(entries.length < 2){ noDataMsg('chart-luz','Precisas de pelo menos 2 leituras para ver o consumo.'); return; }
+  const labels = entries.slice(1).map(e=>shortDate(e.sendDate));
+  const mk = (field)=> entries.slice(1).map((e,i)=> +(Number(e[field])-Number(entries[i][field])).toFixed(0));
+  if(chartLuz) chartLuz.destroy();
+  chartLuz = new Chart(document.getElementById('chart-luz'), {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'Vazio', data: mk('vazio'), borderColor:'#3E7CB1', backgroundColor:'#3E7CB1', tension:.3, pointRadius:3 },
+      { label:'Ponta', data: mk('ponta'), borderColor:'#B54B32', backgroundColor:'#B54B32', tension:.3, pointRadius:3 },
+      { label:'Cheia', data: mk('cheia'), borderColor:'#C99A2E', backgroundColor:'#C99A2E', tension:.3, pointRadius:3 }
+    ]},
+    options: chartOptions('kWh', true)
+  });
+}
+
+function drawChartGas(entries){
+  if(entries.length === 0){ noDataMsg('chart-gas','Ainda sem compras registadas.'); return; }
+  const labels = entries.map(e=>shortDate(e.date));
+  const v13 = entries.map(e=> e.type==='13' ? Number(e.bottles)||0 : 0);
+  const v55 = entries.map(e=> e.type==='55' ? Number(e.bottles)||0 : 0);
+  if(chartGas) chartGas.destroy();
+  chartGas = new Chart(document.getElementById('chart-gas'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:'13 Kg', data:v13, backgroundColor:'#B54B32', borderRadius:4, maxBarThickness:28, stack:'s' },
+      { label:'55 Kg', data:v55, backgroundColor:'#DE8A5B', borderRadius:4, maxBarThickness:28, stack:'s' }
+    ]},
+    options: chartOptions('garrafas', true, true)
+  });
+}
+
+function chartOptions(unit, legend, stacked){
+  return {
+    responsive:true,
+    maintainAspectRatio:false,
+    interaction:{ intersect:false, mode:'index' },
+    plugins:{
+      legend:{ display: !!legend, position:'top', align:'end', labels:{ color:'#9C9585', boxWidth:10, font:{ family:'Manrope', size:11, weight:'600' } } },
+      tooltip:{ backgroundColor:'#0E0D0B', titleColor:'#EDE6D6', bodyColor:'#EDE6D6', borderColor:'#3C3830', borderWidth:1 }
+    },
+    scales:{
+      x:{ stacked: !!stacked, ticks:{ color:'#9C9585', font:{ family:'Space Mono', size:10.5 } }, grid:{ color:'#332F27' } },
+      y:{ stacked: !!stacked, ticks:{ color:'#9C9585', font:{ family:'Space Mono', size:10.5 } }, grid:{ color:'#332F27' }, title:{ display:true, text:unit, color:'#9C9585', font:{ size:10.5 } } }
+    }
+  };
+}
+
+/* ---------- ÁGUA ---------- */
+function sortedAgua(){ return [...data.agua].sort((a,b)=> a.date.localeCompare(b.date)); }
+
+function renderAgua(){
+  const container = document.getElementById('panel-agua');
+  const entries = sortedAgua();
+  const last = entries[entries.length-1];
+  const prev = entries[entries.length-2];
+  const thisYear = new Date().getFullYear();
+  const consumo = (last && prev) ? (Number(last.reading)-Number(prev.reading)).toFixed(1)+' m³' : '—';
+
+  container.innerHTML = `
+    <div class="meter-card">
+      <div class="label-row">
+        <div class="name">Água</div>
+        <div class="updated">${last ? 'Última: '+fmtDate(last.date) : 'sem registos'}</div>
+      </div>
+      ${last ? odometerHTML(last.reading,1) + '<div class="unit" style="margin-top:6px;">m³</div>' : '<div class="empty" style="padding:6px 0;">Ainda sem leituras</div>'}
+      <div class="stat-row">
+        <div class="stat"><div class="k">Consumo desde última leitura</div><div class="v">${consumo}</div></div>
+        <div class="stat"><div class="k">Total ${thisYear}</div><div class="v">${fmtEuro(yearTotal('agua',thisYear))}</div></div>
+        <div class="stat"><div class="k">Total acumulado</div><div class="v">${fmtEuro(allTimeTotal('agua'))}</div></div>
+      </div>
+    </div>
+
+    <form class="entry" id="form-agua">
+      <h3>Novo registo — Água</h3>
+      <div class="fields">
+        <div class="field"><label>Data</label><input type="date" name="date" value="${today()}" required></div>
+        <div class="field"><label>Leitura do contador (m³)</label><input type="number" step="0.1" min="0" name="reading" required></div>
+        <div class="field full"><label>Valor pago (€)</label><input type="number" step="0.01" min="0" name="amount" placeholder="0.00" required></div>
+      </div>
+      <div class="btn-row"><button type="submit" class="primary agua">Guardar registo</button></div>
+    </form>
+
+    <div class="chart-card">
+      <h3>Consumo por leitura (m³)</h3>
+      <div class="chart-wrap"><canvas id="chart-agua"></canvas></div>
+    </div>
+
+    <div class="history"><h3>Histórico</h3><div id="history-agua"></div></div>
+  `;
+
+  drawChartAgua(entries);
+  renderHistoryAgua();
+  document.getElementById('form-agua').addEventListener('submit', ev=>{
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    data.agua.push({ id: uid(), date: fd.get('date'), reading: parseFloat(fd.get('reading'))||0, amount: parseFloat(fd.get('amount'))||0 });
+    saveData();
+    renderAgua();
+  });
+}
+
+function renderHistoryAgua(){
+  const box = document.getElementById('history-agua');
+  const asc = sortedAgua();
+  const entries = [...asc].reverse();
+  if(entries.length===0){ box.innerHTML = '<div class="empty">Sem registos ainda. Adiciona o primeiro acima.</div>'; return; }
+  box.innerHTML = entries.map(e=>{
+    const idx = asc.findIndex(x=>x.id===e.id);
+    const p = idx>0 ? asc[idx-1] : null;
+    const sub = 'm³' + (p ? ` · consumo ${(Number(e.reading)-Number(p.reading)).toFixed(1)} m³` : '');
+    return `
+      <div class="entry-row">
+        <div class="main">
+          <div class="date">${fmtDate(e.date)}</div>
+          <div class="val">${e.reading} m³</div>
+          <div class="sub">${sub}</div>
+        </div>
+        <div class="amount">${fmtEuro(e.amount)}</div>
+        <div class="actions"><button data-del="${e.id}" data-cat="agua">✕</button></div>
+      </div>`;
+  }).join('');
+  bindDelete(box);
+}
+
+/* ---------- LUZ ---------- */
+function sortedLuz(){ return [...data.luz].sort((a,b)=> (a.sendDate||'').localeCompare(b.sendDate||'')); }
+
+function renderLuz(){
+  const container = document.getElementById('panel-luz');
+  const entries = sortedLuz();
+  const last = entries[entries.length-1];
+  const thisYear = new Date().getFullYear();
+
+  const readoutHTML = last ? `
+    <div class="readings-grid">
+      <div class="reading-line"><div class="reading-tag">Vazio</div>${odometerHTML(last.vazio,0,true)}<div class="unit">kWh</div></div>
+      <div class="reading-line"><div class="reading-tag">Ponta</div>${odometerHTML(last.ponta,0,true)}<div class="unit">kWh</div></div>
+      <div class="reading-line"><div class="reading-tag">Cheia</div>${odometerHTML(last.cheia,0,true)}<div class="unit">kWh</div></div>
+    </div>` : '<div class="empty" style="padding:6px 0;">Ainda sem leituras</div>';
+
+  container.innerHTML = `
+    <div class="meter-card">
+      <div class="label-row">
+        <div class="name">Luz</div>
+        <div class="updated">${last ? 'Envio: '+fmtDate(last.sendDate) : 'sem registos'}</div>
+      </div>
+      ${readoutHTML}
+      <div class="stat-row">
+        <div class="stat"><div class="k">Última fatura</div><div class="v">${last ? fmtDate(last.invoiceDate) : '—'}</div></div>
+        <div class="stat"><div class="k">Total ${thisYear}</div><div class="v">${fmtEuro(yearTotal('luz',thisYear))}</div></div>
+        <div class="stat"><div class="k">Total acumulado</div><div class="v">${fmtEuro(allTimeTotal('luz'))}</div></div>
+      </div>
+    </div>
+
+    <form class="entry" id="form-luz">
+      <h3>Novo registo — Luz</h3>
+      <div class="fields">
+        <div class="field"><label>Data de envio da leitura</label><input type="date" name="sendDate" value="${today()}" required></div>
+        <div class="field"><label>Data da fatura</label><input type="date" name="invoiceDate"></div>
+        <div class="field"><label>Leitura Vazio (kWh)</label><input type="number" step="1" min="0" name="vazio" required></div>
+        <div class="field"><label>Leitura Ponta (kWh)</label><input type="number" step="1" min="0" name="ponta" required></div>
+        <div class="field"><label>Leitura Cheia (kWh)</label><input type="number" step="1" min="0" name="cheia" required></div>
+        <div class="field full"><label>Valor pago (€)</label><input type="number" step="0.01" min="0" name="amount" placeholder="0.00" required></div>
+      </div>
+      <div class="btn-row"><button type="submit" class="primary luz">Guardar registo</button></div>
+    </form>
+
+    <div class="chart-card">
+      <h3>Consumo por leitura (kWh)</h3>
+      <div class="chart-wrap"><canvas id="chart-luz"></canvas></div>
+    </div>
+
+    <div class="history"><h3>Histórico</h3><div id="history-luz"></div></div>
+  `;
+
+  drawChartLuz(entries);
+  renderHistoryLuz();
+  document.getElementById('form-luz').addEventListener('submit', ev=>{
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    data.luz.push({
+      id: uid(),
+      sendDate: fd.get('sendDate'),
+      invoiceDate: fd.get('invoiceDate') || '',
+      vazio: parseFloat(fd.get('vazio'))||0,
+      ponta: parseFloat(fd.get('ponta'))||0,
+      cheia: parseFloat(fd.get('cheia'))||0,
+      amount: parseFloat(fd.get('amount'))||0
+    });
+    saveData();
+    renderLuz();
+  });
+}
+
+function renderHistoryLuz(){
+  const box = document.getElementById('history-luz');
+  const asc = sortedLuz();
+  const entries = [...asc].reverse();
+  if(entries.length===0){ box.innerHTML = '<div class="empty">Sem registos ainda. Adiciona o primeiro acima.</div>'; return; }
+  box.innerHTML = entries.map(e=>{
+    const idx = asc.findIndex(x=>x.id===e.id);
+    const p = idx>0 ? asc[idx-1] : null;
+    let sub = `Vazio ${e.vazio} · Ponta ${e.ponta} · Cheia ${e.cheia} kWh`;
+    if(p){
+      const dv=(e.vazio-p.vazio), dp=(e.ponta-p.ponta), dc=(e.cheia-p.cheia);
+      sub += ` · consumo V${dv} P${dp} C${dc}`;
+    }
+    return `
+      <div class="entry-row">
+        <div class="main">
+          <div class="date">Envio ${fmtDate(e.sendDate)}${e.invoiceDate? ' · Fatura '+fmtDate(e.invoiceDate):''}</div>
+          <div class="val">Vazio ${e.vazio} / Ponta ${e.ponta} / Cheia ${e.cheia} kWh</div>
+          <div class="sub">${sub}</div>
+        </div>
+        <div class="amount">${fmtEuro(e.amount)}</div>
+        <div class="actions"><button data-del="${e.id}" data-cat="luz">✕</button></div>
+      </div>`;
+  }).join('');
+  bindDelete(box);
+}
+
+/* ---------- GÁS ---------- */
+function sortedGas(){ return [...data.gas].sort((a,b)=> a.date.localeCompare(b.date)); }
+
+function renderGas(){
+  const container = document.getElementById('panel-gas');
+  const entries = sortedGas();
+  const last = entries[entries.length-1];
+  const thisYear = new Date().getFullYear();
+
+  const bottles13 = data.gas.filter(e=>e.type==='13').reduce((s,e)=>s+Number(e.bottles||0),0);
+  const bottles55 = data.gas.filter(e=>e.type==='55').reduce((s,e)=>s+Number(e.bottles||0),0);
+
+  container.innerHTML = `
+    <div class="meter-card">
+      <div class="label-row">
+        <div class="name">Gás</div>
+        <div class="updated">${last ? 'Última: '+fmtDate(last.date) : 'sem registos'}</div>
+      </div>
+      ${last ? `<div class="bottles-row"><div class="bottle-badge">${last.bottles}<span class="u">× ${last.type}Kg</span></div></div>` : '<div class="empty" style="padding:6px 0;">Ainda sem registos</div>'}
+      <div class="stat-row">
+        <div class="stat"><div class="k">Total garrafas 13Kg</div><div class="v">${bottles13}</div></div>
+        <div class="stat"><div class="k">Total garrafas 55Kg</div><div class="v">${bottles55}</div></div>
+        <div class="stat"><div class="k">Total ${thisYear}</div><div class="v">${fmtEuro(yearTotal('gas',thisYear))}</div></div>
+        <div class="stat"><div class="k">Total acumulado</div><div class="v">${fmtEuro(allTimeTotal('gas'))}</div></div>
+      </div>
+    </div>
+
+    <form class="entry" id="form-gas">
+      <h3>Novo registo — Gás</h3>
+      <div class="fields">
+        <div class="field"><label>Data</label><input type="date" name="date" value="${today()}" required></div>
+        <div class="field">
+          <label>Tipo de garrafa</label>
+          <select name="type" required>
+            <option value="13">13 Kg</option>
+            <option value="55">55 Kg</option>
+          </select>
+        </div>
+        <div class="field"><label>Nº de garrafas</label><input type="number" step="1" min="0" name="bottles" required></div>
+        <div class="field full"><label>Valor pago (€)</label><input type="number" step="0.01" min="0" name="amount" placeholder="0.00" required></div>
+      </div>
+      <div class="btn-row"><button type="submit" class="primary gas">Guardar registo</button></div>
+    </form>
+
+    <div class="chart-card">
+      <h3>Garrafas compradas por registo</h3>
+      <div class="chart-wrap"><canvas id="chart-gas"></canvas></div>
+    </div>
+
+    <div class="history"><h3>Histórico</h3><div id="history-gas"></div></div>
+  `;
+
+  drawChartGas(entries);
+  renderHistoryGas();
+  document.getElementById('form-gas').addEventListener('submit', ev=>{
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    data.gas.push({ id: uid(), date: fd.get('date'), type: fd.get('type'), bottles: parseFloat(fd.get('bottles'))||0, amount: parseFloat(fd.get('amount'))||0 });
+    saveData();
+    renderGas();
+  });
+}
+
+function renderHistoryGas(){
+  const box = document.getElementById('history-gas');
+  const entries = [...sortedGas()].reverse();
+  if(entries.length===0){ box.innerHTML = '<div class="empty">Sem registos ainda. Adiciona o primeiro acima.</div>'; return; }
+  box.innerHTML = entries.map(e=>`
+    <div class="entry-row">
+      <div class="main">
+        <div class="date">${fmtDate(e.date)}</div>
+        <div class="val">${e.bottles} garrafa${e.bottles==1?'':'s'} de ${e.type}Kg</div>
+      </div>
+      <div class="amount">${fmtEuro(e.amount)}</div>
+      <div class="actions"><button data-del="${e.id}" data-cat="gas">✕</button></div>
+    </div>`).join('');
+  bindDelete(box);
+}
+
+/* ---------- shared ---------- */
+function bindDelete(box){
+  box.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-del');
+      const c = btn.getAttribute('data-cat');
+      if(confirm('Apagar este registo?')){
+        data[c] = data[c].filter(x=>x.id!==id);
+        saveData();
+        if(c==='agua') renderAgua();
+        if(c==='luz') renderLuz();
+        if(c==='gas') renderGas();
+      }
+    });
+  });
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.cat).classList.add('active');
+  });
+});
+
+renderAll();
+</script>
+</body>
+</html>
