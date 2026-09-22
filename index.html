@@ -416,15 +416,14 @@ function initFirebase(config){
     cloudEnabled = true;
     setSyncStatus('A ligar…', null);
     docRef().onSnapshot(snap=>{
+      setSyncStatus('Sincronizado', 'ok');
       if(snap.exists){
         data = normalize(snap.data());
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        renderAll();
-        setSyncStatus('Sincronizado', 'ok');
       } else {
         docRef().set(data).catch(()=>{});
-        setSyncStatus('Sincronizado', 'ok');
       }
+      try{ renderAll(); }catch(e){ console.error('Erro ao desenhar a app:', e); }
     }, err=>{
       console.error(err);
       setSyncStatus('Erro de ligação — a usar dados locais', 'err');
@@ -549,7 +548,16 @@ function noDataMsg(canvasId, msg){
   wrap.innerHTML = `<div class="empty" style="padding-top:60px;">${msg}</div>`;
 }
 
+function chartLibMissing(canvasId){
+  if(typeof Chart === 'undefined'){
+    noDataMsg(canvasId, 'Gráfico indisponível — a biblioteca não carregou (verifica a ligação à internet ou um bloqueador de anúncios).');
+    return true;
+  }
+  return false;
+}
+
 function drawChartAgua(entries){
+  if(chartLibMissing('chart-agua')) return;
   if(entries.length < 2){ noDataMsg('chart-agua','Precisas de pelo menos 2 leituras para ver o consumo.'); return; }
   const labels = entries.slice(1).map(e=>shortDate(e.date));
   const values = entries.slice(1).map((e,i)=> +(Number(e.reading)-Number(entries[i].reading)).toFixed(1));
@@ -562,6 +570,7 @@ function drawChartAgua(entries){
 }
 
 function drawChartLuz(entries){
+  if(chartLibMissing('chart-luz')) return;
   if(entries.length < 2){ noDataMsg('chart-luz','Precisas de pelo menos 2 leituras para ver o consumo.'); return; }
   const labels = entries.slice(1).map(e=>shortDate(e.sendDate));
   const mk = (field)=> entries.slice(1).map((e,i)=> +(Number(e[field])-Number(entries[i][field])).toFixed(0));
@@ -578,6 +587,7 @@ function drawChartLuz(entries){
 }
 
 function drawChartGas(entries){
+  if(chartLibMissing('chart-gas')) return;
   if(entries.length === 0){ noDataMsg('chart-gas','Ainda sem compras registadas.'); return; }
   const labels = entries.map(e=>shortDate(e.date));
   const v13 = entries.map(e=> e.type==='13' ? Number(e.bottles)||0 : 0);
