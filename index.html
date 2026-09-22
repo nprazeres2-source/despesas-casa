@@ -420,7 +420,7 @@
   <section class="panel" id="panel-luz"></section>
   <section class="panel" id="panel-gas"></section>
 
-  <footer>Sem sincronização configurada, os dados ficam apenas neste equipamento (localStorage).</footer>
+  <footer id="app-footer">Sem sincronização configurada, os dados ficam apenas neste equipamento (localStorage).</footer>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -475,6 +475,14 @@ function setSyncStatus(text, cls){
   const label = document.getElementById('sync-text');
   dot.className = 'sync-dot' + (cls ? ' '+cls : '');
   label.textContent = text;
+  const footer = document.getElementById('app-footer');
+  if(cls === 'ok'){
+    footer.textContent = 'Sincronizado via Firebase — os dados são partilhados entre todos os equipamentos com esta configuração.';
+  } else if(cls === 'err'){
+    footer.textContent = 'Erro a sincronizar — os dados continuam a ser guardados neste equipamento (localStorage) até a ligação ser restabelecida.';
+  } else {
+    footer.textContent = 'Sem sincronização configurada, os dados ficam apenas neste equipamento (localStorage).';
+  }
 }
 
 function docRef(){ return db.collection('despesasCasa').doc('dados'); }
